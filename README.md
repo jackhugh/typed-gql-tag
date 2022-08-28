@@ -45,23 +45,23 @@ An extension for the `graphq-tag` library used by many graphql clients that infe
    export const gql = createGqlTag<Query, Mutation>();
    ```
 
-   4. Use in application (apollo example)
+4. Use in application (apollo example)
 
-   ```typescript
-   import { useQuery } from '@apollo/client';
-   import { gql } from './gql-tag';
+```typescript
+import { useQuery } from '@apollo/client';
+import { gql } from './gql-tag';
 
-   // `data` is fully typed according to our `schema.graphql`
-   const { data } = useQuery(
-     gql(`
-     query UserQuery {
-       id
-       name
-       posts {
-         id
-         description
-       }
-     }
-   `)
-   );
-   ```
+// `data` is fully typed according to our `schema.graphql`
+const { data } = useQuery(
+  gql(`
+  query UserQuery {
+    id
+    name
+    posts {
+      id
+      description
+    }
+  }
+`)
+);
+```
