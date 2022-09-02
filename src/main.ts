@@ -1,4 +1,10 @@
-export {};
+import { Query } from '../gql-types';
+import {
+  useQuery,
+  gql as gqlTag,
+  TypedDocumentNode,
+  OperationVariables,
+} from '@apollo/client';
 
 type Whitespace = '\n' | '\t' | ' ';
 
@@ -112,17 +118,46 @@ type Tokenize<
       MergeProperty<T, GetField<R>[0], GetValue<GetField<R>[1]>>
     >;
 
-const gql = <T extends string>(query: T) => {
-  return null as unknown as Tokenize<T>;
+// TODO: bubble nevers
+// TODO: returns undefined sometimes
+type ParseToken<T extends Token, Q extends object> = {
+  [P in keyof T]: T[P] extends true
+    ? P extends keyof Q
+      ? Q[P]
+      : never
+    : T[P] extends Token
+    ? P extends keyof Q
+      ? Q[P] extends any[]
+        ? Q[P]
+        : Q[P] extends object
+        ? ParseToken<T[P], Q[P]>
+        : never
+      : never
+    : never;
 };
 
-const value = gql(`
+type GraphqlBaseQuery = { __typename?: 'Query' };
+
+function createGqlTag<Q extends GraphqlBaseQuery>() {
+  return function gql<T extends string>(query: T) {
+    return gqlTag(query) as TypedDocumentNode<
+      ParseToken<Tokenize<T>, Q>,
+      OperationVariables
+    >;
+  };
+}
+
+const gql = createGqlTag<Query>();
+
+const { data } = useQuery(
+  gql(`
   user {
     id
     name
-    testing
     posts {
-      postIds
+      id
+      name
     }
   }
-`);
+`)
+);
