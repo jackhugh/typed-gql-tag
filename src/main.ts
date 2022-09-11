@@ -75,14 +75,6 @@ type Token = {
   [key: string]: true | Token;
 };
 
-type MergeProperty<
-  Object extends object,
-  Key extends string,
-  Value
-> = Object & {
-  [P in Key]: Value;
-};
-
 type GetField<
   Remainder extends string,
   Word extends string = ''
@@ -115,10 +107,9 @@ type Tokenize<
   ? T
   : Tokenize<
       GetNextField<GetField<R>[1]>,
-      MergeProperty<T, GetField<R>[0], GetValue<GetField<R>[1]>>
+      T & { [P in GetField<R>[0]]: GetValue<GetField<R>[1]> }
     >;
 
-// TODO: bubble nevers
 // TODO: returns undefined sometimes
 type ParseToken<T extends Token, Q extends object> = {
   [P in keyof T]: T[P] extends true
@@ -128,7 +119,7 @@ type ParseToken<T extends Token, Q extends object> = {
     : T[P] extends Token
     ? P extends keyof Q
       ? Q[P] extends any[]
-        ? Q[P]
+        ? ParseToken<T[P], Q[P][any]>[]
         : Q[P] extends object
         ? ParseToken<T[P], Q[P]>
         : never
@@ -136,12 +127,23 @@ type ParseToken<T extends Token, Q extends object> = {
     : never;
 };
 
+type Expand<T> = T extends object
+  ? T extends infer O
+    ? { [K in keyof O]: Expand<O[K]> }
+    : never
+  : T;
+
+type ContainsNeverHelper<T> = {
+  [K in keyof T]: T[K] extends never ? true : ContainsNeverHelper<T[K]>;
+}[keyof T];
+type ContainsNever<T> = true extends ContainsNeverHelper<T> ? never : T;
+
 type GraphqlBaseQuery = { __typename?: 'Query' };
 
 function createGqlTag<Q extends GraphqlBaseQuery>() {
   return function gql<T extends string>(query: T) {
     return gqlTag(query) as TypedDocumentNode<
-      ParseToken<Tokenize<T>, Q>,
+      Expand<ParseToken<Tokenize<T>, Q>>,
       OperationVariables
     >;
   };
@@ -153,10 +155,7 @@ const { data } = useQuery(
   gql(`
   user {
     id
-    name
     posts {
-      id
-      name
     }
   }
 `)
